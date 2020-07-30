@@ -95,7 +95,7 @@ def create_bn_example4(name, liberal, spend):
     network.bake()
 
     #import pdb; pdb.set_trace()
-    prediction = network.predict_proba({'D':'Gasto'}) 
+    prediction = network.predict_proba({'D':'AumentaGasto'}) 
     
     prev_val = network.marginal()[2].parameters[0]['Buena']
     print(f"\t\t Prior value: {prev_val}")
