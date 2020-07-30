@@ -2,6 +2,7 @@
 
 import math
 from pomegranate import *
+from numpy.random import beta
 
 #Lo hago una vez para Alice
 # represents whether The Directory is a reputable publication
@@ -108,10 +109,88 @@ print("Running example 4:")
 create_bn_example4("Alice", 0.9, 0.5)
 create_bn_example4("Bob", 0.1, 0.5)
 
+#----------------------------------------------------------------------------
 
 
+def create_bn_example4_simulation(name, liberal, spend, sim_number):
+    #print(f"\t {name}:")
+    #V1 ={‘Fiscally conservative’= 0,‘Fiscally liberal’= 1}
+    #Represents the optimal economy philosophy
+    node_v1 =  DiscreteDistribution( { 'Conservador' : 1-liberal, 'Liberal' : liberal } )
+    #V2 ={‘No spending’= 0,‘Spending increase’= 1}
+    #Represents the new bill's spending policy
+    node_v2 =  DiscreteDistribution( { 'NoGasto' : 1-spend, 'Gasto' : spend } )
+
+    #H={‘Bad policy’= 0,‘Good policy’= 1}
+    node_h = ConditionalProbabilityTable([
+        ["Conservador", "NoGasto", "Buena", 0.5],
+        ["Conservador", "NoGasto", "Mala", 0.5],
+
+        ["Conservador", "Gasto", "Buena", 0.1],
+        ["Conservador", "Gasto", "Mala", 0.9],
+
+        ["Liberal", "NoGasto", "Buena", 0.5],
+        ["Liberal", "NoGasto", "Mala", 0.5],
+
+        ["Liberal", "Gasto", "Buena", 0.9],
+        ["Liberal", "Gasto", "Mala", 0.1],
+    ],[node_v1, node_v2])
+
+    #D={‘No spending’= 0,‘Spending increase’= 1}
+    #Conclusion by independent study
+    node_d = ConditionalProbabilityTable([
+        ["NoGasto", "NoAumentaGasto", 0.9],
+        ["NoGasto", "AumentaGasto", 0.1],
+
+        ["Gasto", "AumentaGasto", 0.9],
+        ["Gasto", "NoAumentaGasto", 0.1],
+    ],[node_v2])
+
+    v1=Node(node_v1, name="V1")
+    v2=Node(node_v2, name="V2")
+    h=Node(node_h, name="H")
+    d=Node(node_d, name="D")
+
+    network = BayesianNetwork("Political Belief")
+    network.add_nodes(v1,v2,h,d)
+    network.add_edge(v1,h)
+    network.add_edge(v2,h)
+    network.add_edge(v2,d)
+    network.bake()
+
+    #import pdb; pdb.set_trace()
+    prediction = network.predict_proba({'D':'AumentaGasto'}) 
+    
+    prev_val = network.marginal()[2].parameters[0]['Buena']
+    updated_val = prediction[2].parameters[0]['Buena']
+    #print(f"\t\t Prior value: {prev_val}")
+    #print(f"\t\t Updated value: {updated_val}")
+    if (prev_val < 0.5) and (updated_val < prev_val) and abs(updated_val - prev_val) > 0.1:
+        print("BELIEF UPDATE! From bad to even worse")
+        print(f"Case {sim_number} with values\
+                \n\t Previous {prev_val} \n\t Updated {updated_val}")
+        return True
+    elif (prev_val > 0.5) and (updated_val > prev_val) and abs(updated_val - prev_val) > 0.1:
+        print("BELIEF UPDATE! From good to even better")
+        print(f"Case {sim_number} with values\
+                \n\t Previous {prev_val} \n\t Updated {updated_val}")
+        return True
 
 
+def simulate_biased(n=100):
+    updates = 0
+    for i in range(0,n):
+        #print(f"Simulation {i}")
+        #print("Generating biased priors...")
+        liberal = beta(0.1,0.1)
+        spend = beta(0.1,0.1)
+        #print(f"Values: \n\tLiberal {liberal}\n\t Spend {spend}")
+        is_updated = create_bn_example4_simulation("Alice", liberal, spend, i)
+        if is_updated:
+            updates+=1
+    print(f"\n\n\t\t\tUsing {n} biased simulations obtained belief updates in {updates} cases")
+
+simulate_biased(1000)
 
 
 
