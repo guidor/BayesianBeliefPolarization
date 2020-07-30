@@ -1,199 +1,175 @@
 #!/usr/bin/env python
 
-import math
-from pomegranate import *
+from models import (create_bn_example1,
+                    create_bn_example2, 
+                    create_bn_example4, 
+                    create_bn_example1_simulation,
+                    create_bn_example2_simulation,
+                    create_bn_example4_simulation)
 from numpy.random import beta
 
-#Lo hago una vez para Alice
-# represents whether The Directory is a reputable publication
-def create_bn_example1(name, reputable_prob, calif_prob):
-    print(f"\t {name}:")
-    print(f"\t\t Prior value: {calif_prob}")
-    node_v = DiscreteDistribution( { 'Reputable' : reputable_prob, 'NoReputable' : 1-reputable_prob } )
-
-    # represents whether or not Carol is qualified for the promotion
-    node_h = DiscreteDistribution( { 'Calificado' : calif_prob, 'NoCalificado' : 1-calif_prob } )
-
-    # represents whether Carol is featured in the Directory
-    node_d = ConditionalProbabilityTable([
-        ['NoReputable', 'NoCalificado', 'Promovido', 0.5],
-        ['NoReputable', 'NoCalificado', 'NoPromovido', 0.5],
-
-        ['NoReputable', 'Calificado', 'Promovido', 0.1],
-        ['NoReputable', 'Calificado', 'NoPromovido', 0.9],
-
-        ['Reputable', 'NoCalificado', 'Promovido', 0.1],
-        ['Reputable', 'NoCalificado', 'NoPromovido', 0.9],
-
-        ['Reputable', 'Calificado', 'Promovido', 0.9],
-        ['Reputable', 'Calificado', 'NoPromovido', 0.1]
-    ],[node_v,node_h])
-
-    v=Node(node_v, name="V")
-    h=Node(node_h, name="H")
-    d=Node(node_d, name="D")
-
-    network = BayesianNetwork("The promotion")
-    network.add_nodes(v,h,d)
-    network.add_edge(v,d)
-    network.add_edge(h,d)
-    network.bake()
-
-    prediction = network.predict_proba({'D':'Promovido'})[1]
-    print(f"\t\t Updated value: {prediction.parameters[0]['Calificado']}")
 
 
-print("Running example 1:")
+print("Running example 1 -The Promotion-:")
 create_bn_example1("Alice", 0.99, 0.6)
 create_bn_example1("Bob", 0.1, 0.4)
+ 
+
+print("Running example 2 -Religious Belief-:")
+create_bn_example2("Alice", 0.9)
+create_bn_example2("Bob", 0.1)
 
 
-
-def create_bn_example4(name, liberal, spend):
-    print(f"\t {name}:")
-    #V1 ={‘Fiscally conservative’= 0,‘Fiscally liberal’= 1}
-    #Represents the optimal economy philosophy
-    node_v1 =  DiscreteDistribution( { 'Conservador' : 1-liberal, 'Liberal' : liberal } )
-    #V2 ={‘No spending’= 0,‘Spending increase’= 1}
-    #Represents the new bill's spending policy
-    node_v2 =  DiscreteDistribution( { 'NoGasto' : 1-spend, 'Gasto' : spend } )
-
-    #H={‘Bad policy’= 0,‘Good policy’= 1}
-    node_h = ConditionalProbabilityTable([
-        ["Conservador", "NoGasto", "Buena", 0.5],
-        ["Conservador", "NoGasto", "Mala", 0.5],
-
-        ["Conservador", "Gasto", "Buena", 0.1],
-        ["Conservador", "Gasto", "Mala", 0.9],
-
-        ["Liberal", "NoGasto", "Buena", 0.5],
-        ["Liberal", "NoGasto", "Mala", 0.5],
-
-        ["Liberal", "Gasto", "Buena", 0.9],
-        ["Liberal", "Gasto", "Mala", 0.1],
-    ],[node_v1, node_v2])
-
-    #D={‘No spending’= 0,‘Spending increase’= 1}
-    #Conclusion by independent study
-    node_d = ConditionalProbabilityTable([
-        ["NoGasto", "NoAumentaGasto", 0.9],
-        ["NoGasto", "AumentaGasto", 0.1],
-
-        ["Gasto", "AumentaGasto", 0.9],
-        ["Gasto", "NoAumentaGasto", 0.1],
-    ],[node_v2])
-
-    v1=Node(node_v1, name="V1")
-    v2=Node(node_v2, name="V2")
-    h=Node(node_h, name="H")
-    d=Node(node_d, name="D")
-
-    network = BayesianNetwork("Political Belief")
-    network.add_nodes(v1,v2,h,d)
-    network.add_edge(v1,h)
-    network.add_edge(v2,h)
-    network.add_edge(v2,d)
-    network.bake()
-
-    #import pdb; pdb.set_trace()
-    prediction = network.predict_proba({'D':'AumentaGasto'}) 
-    
-    prev_val = network.marginal()[2].parameters[0]['Buena']
-    print(f"\t\t Prior value: {prev_val}")
-
-    print(f"\t\t Updated value: {prediction[2].parameters[0]['Buena']}")
-    
-
-print("Running example 4:")
-
+print("Running example 4 -Political Belief-:")
 create_bn_example4("Alice", 0.9, 0.5)
 create_bn_example4("Bob", 0.1, 0.5)
 
-#----------------------------------------------------------------------------
+#---------------------------SIMULATIONS-------------------------------------------------
+
+def simulate_network_1():
+    print("\n")
+    print('*'*30)
+    print("\n")
+    print("Running simulation on Bayes Net 1 -The Promotion-")
+    def simulate_biased(n=100):
+        updates = 0
+        for i in range(0,n):
+            #print(f"Simulation {i}")
+            #print("Generating biased priors...")
+            reputable_prob  = beta(0.1,0.1)
+            calif_prob = beta(0.1,0.1)
+            #print(f"Values: \n\tLiberal {liberal}\n\t Spend {spend}")
+            is_updated = create_bn_example1_simulation("Alice", reputable_prob, calif_prob, i)
+            if is_updated:
+                updates+=1
+        #print(f"\n\n\t\t\tUsing {n} biased simulations obtained belief updates in {updates} cases")
+        return n, updates
 
 
-def create_bn_example4_simulation(name, liberal, spend, sim_number):
-    #print(f"\t {name}:")
-    #V1 ={‘Fiscally conservative’= 0,‘Fiscally liberal’= 1}
-    #Represents the optimal economy philosophy
-    node_v1 =  DiscreteDistribution( { 'Conservador' : 1-liberal, 'Liberal' : liberal } )
-    #V2 ={‘No spending’= 0,‘Spending increase’= 1}
-    #Represents the new bill's spending policy
-    node_v2 =  DiscreteDistribution( { 'NoGasto' : 1-spend, 'Gasto' : spend } )
-
-    #H={‘Bad policy’= 0,‘Good policy’= 1}
-    node_h = ConditionalProbabilityTable([
-        ["Conservador", "NoGasto", "Buena", 0.5],
-        ["Conservador", "NoGasto", "Mala", 0.5],
-
-        ["Conservador", "Gasto", "Buena", 0.1],
-        ["Conservador", "Gasto", "Mala", 0.9],
-
-        ["Liberal", "NoGasto", "Buena", 0.5],
-        ["Liberal", "NoGasto", "Mala", 0.5],
-
-        ["Liberal", "Gasto", "Buena", 0.9],
-        ["Liberal", "Gasto", "Mala", 0.1],
-    ],[node_v1, node_v2])
-
-    #D={‘No spending’= 0,‘Spending increase’= 1}
-    #Conclusion by independent study
-    node_d = ConditionalProbabilityTable([
-        ["NoGasto", "NoAumentaGasto", 0.9],
-        ["NoGasto", "AumentaGasto", 0.1],
-
-        ["Gasto", "AumentaGasto", 0.9],
-        ["Gasto", "NoAumentaGasto", 0.1],
-    ],[node_v2])
-
-    v1=Node(node_v1, name="V1")
-    v2=Node(node_v2, name="V2")
-    h=Node(node_h, name="H")
-    d=Node(node_d, name="D")
-
-    network = BayesianNetwork("Political Belief")
-    network.add_nodes(v1,v2,h,d)
-    network.add_edge(v1,h)
-    network.add_edge(v2,h)
-    network.add_edge(v2,d)
-    network.bake()
-
-    #import pdb; pdb.set_trace()
-    prediction = network.predict_proba({'D':'AumentaGasto'}) 
-    
-    prev_val = network.marginal()[2].parameters[0]['Buena']
-    updated_val = prediction[2].parameters[0]['Buena']
-    #print(f"\t\t Prior value: {prev_val}")
-    #print(f"\t\t Updated value: {updated_val}")
-    if (prev_val < 0.5) and (updated_val < prev_val) and abs(updated_val - prev_val) > 0.1:
-        print("BELIEF UPDATE! From bad to even worse")
-        print(f"Case {sim_number} with values\
-                \n\t Previous {prev_val} \n\t Updated {updated_val}")
-        return True
-    elif (prev_val > 0.5) and (updated_val > prev_val) and abs(updated_val - prev_val) > 0.1:
-        print("BELIEF UPDATE! From good to even better")
-        print(f"Case {sim_number} with values\
-                \n\t Previous {prev_val} \n\t Updated {updated_val}")
-        return True
-
-
-def simulate_biased(n=100):
-    updates = 0
-    for i in range(0,n):
-        #print(f"Simulation {i}")
-        #print("Generating biased priors...")
-        liberal = beta(0.1,0.1)
-        spend = beta(0.1,0.1)
-        #print(f"Values: \n\tLiberal {liberal}\n\t Spend {spend}")
-        is_updated = create_bn_example4_simulation("Alice", liberal, spend, i)
-        if is_updated:
-            updates+=1
-    print(f"\n\n\t\t\tUsing {n} biased simulations obtained belief updates in {updates} cases")
-
-simulate_biased(1000)
+    def simulate_uniform(n=100):
+        updates = 0
+        for i in range(0,n):
+            #print(f"Simulation {i}")
+            #print("Generating biased priors...")
+            reputable_prob = beta(1,1)
+            calif_prob = beta(1,1)
+            #print(f"Values: \n\tLiberal {liberal}\n\t Spend {spend}")
+            is_updated = create_bn_example1_simulation("Alice", reputable_prob, calif_prob, i)
+            if is_updated:
+                updates+=1
+        #print(f"\n\n\t\t\tUsing {n} uniform simulations obtained belief updates in {updates} cases")
+        return n, updates
 
 
 
+    n_bias, update_bias = simulate_biased(1000)
+
+    n_uniform, update_uniform = simulate_uniform(1000)
+    print("Bias conclusion:")
+    print(f"\n\n\t\t\tUsing {n_bias} biased simulations obtained belief updates in {update_bias} cases")
+    print(f"\t\t {(update_bias/n_bias)*100}% on contrary updated belief")
+
+    print("Uniform conclusion:")
+    print(f"\n\n\t\t\tUsing {n_uniform} uniform simulations obtained belief updates in {update_uniform} cases")
+    print(f"\t\t {(update_uniform/n_uniform)*100}% on contrary updated belief")
+    print("Done")
 
 
-print("Done")
+def simulate_network_2():
+    print("\n")
+    print('*'*30)
+    print("\n")
+    print("Running simulation on Bayes Net 2 -Religious Belief-")
+    def simulate_biased(n=100):
+        updates = 0
+        for i in range(0,n):
+            #print(f"Simulation {i}")
+            #print("Generating biased priors...")
+            christian_prob = beta(0.1,0.1)
+            #print(f"Values: \n\tLiberal {liberal}\n\t Spend {spend}")
+            is_updated = create_bn_example2_simulation("Alice", christian_prob, i)
+            if is_updated:
+                updates+=1
+        #print(f"\n\n\t\t\tUsing {n} biased simulations obtained belief updates in {updates} cases")
+        return n, updates
+
+
+    def simulate_uniform(n=100):
+        updates = 0
+        for i in range(0,n):
+            #print(f"Simulation {i}")
+            #print("Generating biased priors...")
+            christian_prob = beta(1,1)
+            #print(f"Values: \n\tLiberal {liberal}\n\t Spend {spend}")
+            is_updated = create_bn_example2_simulation("Alice", christian_prob, i)
+            if is_updated:
+                updates+=1
+        #print(f"\n\n\t\t\tUsing {n} uniform simulations obtained belief updates in {updates} cases")
+        return n, updates
+
+
+
+    n_bias, update_bias = simulate_biased(1000)
+
+    n_uniform, update_uniform = simulate_uniform(1000)
+    print("Bias conclusion:")
+    print(f"\n\n\t\t\tUsing {n_bias} biased simulations obtained belief updates in {update_bias} cases")
+    print(f"\t\t {(update_bias/n_bias)*100}% on contrary updated belief")
+
+    print("Uniform conclusion:")
+    print(f"\n\n\t\t\tUsing {n_uniform} uniform simulations obtained belief updates in {update_uniform} cases")
+    print(f"\t\t {(update_uniform/n_uniform)*100}% on contrary updated belief")
+    print("Done")
+
+
+def simulate_network_4():
+    print("\n")
+    print('*'*30)
+    print("\n")
+    print("Running simulation on Bayes Net 4 -Political Belief- (Not included in paper)")
+    def simulate_biased(n=100):
+        updates = 0
+        for i in range(0,n):
+            #print(f"Simulation {i}")
+            #print("Generating biased priors...")
+            liberal = beta(0.1,0.1)
+            spend = beta(0.1,0.1)
+            #print(f"Values: \n\tLiberal {liberal}\n\t Spend {spend}")
+            is_updated = create_bn_example4_simulation("Alice", liberal, spend, i)
+            if is_updated:
+                updates+=1
+        #print(f"\n\n\t\t\tUsing {n} biased simulations obtained belief updates in {updates} cases")
+        return n, updates
+
+
+    def simulate_uniform(n=100):
+        updates = 0
+        for i in range(0,n):
+            #print(f"Simulation {i}")
+            #print("Generating biased priors...")
+            liberal = beta(1,1)
+            spend = beta(1,1)
+            #print(f"Values: \n\tLiberal {liberal}\n\t Spend {spend}")
+            is_updated = create_bn_example4_simulation("Alice", liberal, spend, i)
+            if is_updated:
+                updates+=1
+        #print(f"\n\n\t\t\tUsing {n} uniform simulations obtained belief updates in {updates} cases")
+        return n, updates
+
+
+
+    n_bias, update_bias = simulate_biased(1000)
+
+    n_uniform, update_uniform = simulate_uniform(1000)
+    print("Bias conclusion:")
+    print(f"\n\n\t\t\tUsing {n_bias} biased simulations obtained belief updates in {update_bias} cases")
+    print(f"\t\t {(update_bias/n_bias)*100}% on contrary updated belief")
+
+    print("uniform conclusion:")
+    print(f"\n\n\t\t\tUsing {n_uniform} uniform simulations obtained belief updates in {update_uniform} cases")
+    print(f"\t\t {(update_uniform/n_uniform)*100}% on contrary updated belief")
+    print("Done")
+
+simulate_network_1()
+simulate_network_2()
+simulate_network_4()
