@@ -73,7 +73,7 @@ def create_bn_example2(name, christian_prob):
     h=Node(node_h, name="H")
     d=Node(node_d, name="D")
 
-    network = BayesianNetwork("The promotion")
+    network = BayesianNetwork("Religious Belief")
     network.add_nodes(v,h,d)
     network.add_edge(v,d)
     network.add_edge(v,h)
@@ -224,7 +224,7 @@ def create_bn_example2_simulation(name, christian_prob, i):
     h=Node(node_h, name="H")
     d=Node(node_d, name="D")
 
-    network = BayesianNetwork("The promotion")
+    network = BayesianNetwork("Religious Belief")
     network.add_nodes(v,h,d)
     network.add_edge(v,d)
     network.add_edge(v,h)
